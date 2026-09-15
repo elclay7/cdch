@@ -3,7 +3,7 @@
 // Simulador hipotecario educativo e independiente.
 // NO se envían ni almacenan datos personales. Todos los cálculos se ejecutan
 // localmente en el navegador del usuario. Las peticiones de red externas
-// son a mindicador.cl (HTTPS), con fallback a findic.cl, para obtener el
+// son a findic.cl (HTTPS), con fallback a mindicador.cl, para obtener el
 // valor actual de la UF.
 
 const formatterCLP = new Intl.NumberFormat('es-CL', {
@@ -18,9 +18,9 @@ const formatterUF = new Intl.NumberFormat('es-CL', {
 });
 
 // --- FETCH API UF ---
-// Fuente principal: mindicador.cl. Si falla o no responde, fallback a findic.cl.
-const UF_API_URL = 'https://mindicador.cl/api';
-const UF_API_FALLBACK_URL = 'https://findic.cl/api/uf';
+// Fuente principal: findic.cl (rápida). Si falla o no responde, fallback a mindicador.cl.
+const UF_API_URL = 'https://findic.cl/api/uf';
+const UF_API_FALLBACK_URL = 'https://mindicador.cl/api';
 const UF_API_TIMEOUT_MS = 6000;
 const UF_FALLBACK_TIMEOUT_MS = 6000;
 
@@ -41,17 +41,17 @@ async function fetchJsonWithTimeout(url, timeoutMs) {
 }
 
 async function fetchUFValor() {
-    // 1) Intentar mindicador.cl
+    // 1) Intentar findic.cl (serie ordenada descendente, primer elemento = valor más reciente)
     try {
         const data = await fetchJsonWithTimeout(UF_API_URL, UF_API_TIMEOUT_MS);
-        const valor = data?.uf?.valor;
+        const valor = data?.serie?.[0]?.valor;
         if (typeof valor === 'number' && valor > 0) return valor;
     } catch (e) {
-        console.warn('mindicador.cl falló, probando fallback findic.cl:', e);
+        console.warn('findic.cl falló, probando fallback mindicador.cl:', e);
     }
-    // 2) Fallback: findic.cl (serie ordenada descendente, primer elemento = valor más reciente)
+    // 2) Fallback: mindicador.cl
     const data = await fetchJsonWithTimeout(UF_API_FALLBACK_URL, UF_FALLBACK_TIMEOUT_MS);
-    const valor = data?.serie?.[0]?.valor;
+    const valor = data?.uf?.valor;
     if (typeof valor !== 'number' || valor <= 0) {
         throw new Error('Valor de UF no válido');
     }
